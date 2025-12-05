@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres-container
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: crawler_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: crawler_user
+      POSTGRES_PASSWORD: crawler_password_123
+      POSTGRES_DB: crawler_db
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./AI_crawl/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crawler_user -d crawler_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crawler_network
+
+  chatbot-qdrant:
+    image: qdrant/qdrant:v1.15.1
+    container_name: chatbot-qdrant-container
+    restart: always
+    ports:
+      - "${QDRANT_PORT}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+volumes:
+  postgres-data:
+  postgres_data:
+    driver: local
+  qdrant-data:
+
+networks:
+  crawler_network:
+    driver: bridge
