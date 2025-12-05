@@ -218,25 +218,40 @@ class DatabaseManager:
             else:
                 domain_normalized = domain
             
-            # Get website_id from mapping, or assign new one
-            if domain_normalized in self.WEBSITE_MAPPING:
-                website_id = self.WEBSITE_MAPPING[domain_normalized]
-            else:
-                # Query max website_id từ database để gán ID mới
-                with self.conn.cursor() as cur:
-                    cur.execute("SELECT COALESCE(MAX(website_id), 0) FROM products")
-                    max_id = cur.fetchone()[0]
-                    website_id = max_id + 1
+            # Use website_name as unique key (better for file uploads)
+            # Check if this website_name already exists in database
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    "SELECT DISTINCT website_id FROM products WHERE website_name = %s LIMIT 1",
+                    (name,)
+                )
+                result = cur.fetchone()
                 
-                self.WEBSITE_MAPPING[domain_normalized] = website_id
+                if result:
+                    # Website exists, use existing ID
+                    website_id = result[0]
+                    print(f"✅ Website exists: {name} (ID: {website_id})")
+                else:
+                    # New website, assign new ID
+                    # Try domain mapping first (for known websites)
+                    if domain_normalized in self.WEBSITE_MAPPING:
+                        website_id = self.WEBSITE_MAPPING[domain_normalized]
+                    else:
+                        # Query max website_id from database
+                        cur.execute("SELECT COALESCE(MAX(website_id), 0) FROM products")
+                        max_id = cur.fetchone()[0]
+                        website_id = max_id + 1
+                    
+                    print(f"✅ New website: {name}")
             
-            print(f"✅ Website: {name}")
             print(f"   Domain: {domain_normalized}")
             print(f"   Website ID: {website_id}")
             print(f"   Tất cả products sẽ lưu vào: public.products")
             return website_id
         except Exception as e:
             print(f"❌ Error adding website: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def import_products_from_json(self, json_file, website_id=None, website_name=None, user_id=None):

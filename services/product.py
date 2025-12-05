@@ -29,5 +29,7 @@ class ProductService:
         return ProductRepository.get_some_infor(product_id)
     
     @staticmethod
-    def add_file_to_products(file: bytes, user_id: uuid.UUID, website_name: str) -> dict:
-        return ProductRepository.add_file_to_products(file, user_id, website_name)
+    def add_file_to_products(
+        file: bytes, user_id: uuid.UUID, website_name: str, file_name: str | None = None
+    ) -> dict:
+        return ProductRepository.add_file_to_products(file, user_id, website_name, file_name)

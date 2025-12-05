@@ -178,7 +178,7 @@ def main():
     timeout_timer.start()
     
     if len(sys.argv) < 2:
-        print("Usage: python3 pipeline.py <url> <user_id> [max_products]")
+        print("Usage: python3 pipeline.py <url> <user_id> [max_products] [website_name]")
         sys.exit(1)
     
     url = sys.argv[1]
@@ -186,11 +186,12 @@ def main():
     # VALIDATE USER_ID - BẮT BUỘC PHẢI CÓ
     if len(sys.argv) <= 2:
         print("❌ Thiếu user_id! Cần phải đăng nhập mới được crawl.")
-        print("Usage: python3 pipeline.py <url> <user_id> [max_products]")
+        print("Usage: python3 pipeline.py <url> <user_id> [max_products] [website_name]")
         sys.exit(1)
     
     user_id = sys.argv[2]
     max_products = int(sys.argv[3]) if len(sys.argv) > 3 else MAX_PRODUCTS
+    website_name_override = sys.argv[4] if len(sys.argv) > 4 else None
     
     # Verify user_id format
     try:
@@ -312,7 +313,7 @@ def main():
         
         # Add website
         domain = urlparse(url).netloc
-        website_name = domain.replace('_', ' ').title()
+        website_name = website_name_override or domain.replace('_', ' ').title()
         
         print(f"  🌐 Website: {website_name}")
         print(f"     Domain: {domain}")
@@ -758,6 +759,7 @@ def import_from_file(file_path: str, user_id: str, website_name: str = None) -> 
                     url = f"file://{website_name.lower().replace(' ', '-')}/{title_slug}"
                 
                 products_data.append((
+                    str(uuid.uuid4()),  # Generate UUID for id
                     website_id,
                     website_name,
                     url,
@@ -779,7 +781,7 @@ def import_from_file(file_path: str, user_id: str, website_name: str = None) -> 
                 with db.conn.cursor() as cur:
                     execute_values(cur, """
                         INSERT INTO products
-                        (website_id, website_name, url, title, price, original_price, currency, sku, brand, category, description, availability, images, user_id)
+                        (id, website_id, website_name, url, title, price, original_price, currency, sku, brand, category, description, availability, images, user_id)
                         VALUES %s
                         ON CONFLICT (url) DO UPDATE SET
                             title = EXCLUDED.title,

@@ -1,6 +1,6 @@
 from typing import Optional
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from models.product import ProductCreate, ProductUpdatePayload, ProductModel
 from services.product import ProductService
 
@@ -75,7 +75,11 @@ async def get_some_infor(product_id: uuid.UUID) -> Optional[dict]:
 
 
 @router.post("/add_file_to_product/{product_id}", response_model=dict)
-async def add_file_to_products(file: bytes, user_id: uuid.UUID,  website_name: str = "toi la gay") -> dict:
+async def add_file_to_products(
+    file: UploadFile = File(...),
+    user_id: uuid.UUID = Form(...),
+    website_name: str = Form("toi la gay"),
+) -> dict:
     """
     Add products from CSV file
     Returns a dict with:
@@ -83,7 +87,10 @@ async def add_file_to_products(file: bytes, user_id: uuid.UUID,  website_name: s
     - 'missing_info_products': list of products with missing required information
     """
     try:
-        result = ProductService.add_file_to_products(file, user_id, website_name)
+        file_bytes = await file.read()
+        result = ProductService.add_file_to_products(
+            file_bytes, user_id, website_name, file.filename
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

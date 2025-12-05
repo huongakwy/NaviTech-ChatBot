@@ -14,12 +14,21 @@ CREATE TABLE IF NOT EXISTS products (
     category VARCHAR(255),
     description TEXT,
     availability VARCHAR(100),
-    images TEXT,
+    images TEXT,  -- JSON string, not array
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for better performance
+-- Alter existing column if it's array type
+DO $$ 
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'products' AND column_name = 'images' AND data_type = 'ARRAY'
+    ) THEN
+        ALTER TABLE products ALTER COLUMN images TYPE TEXT;
+    END IF;
+END $$;-- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_products_url ON products(url);
 CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand);
 CREATE INDEX IF NOT EXISTS idx_products_price ON products(price);

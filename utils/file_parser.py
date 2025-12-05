@@ -304,7 +304,7 @@ class FileParser:
             raise ValueError(f"Error parsing JSON: {str(e)}")
     
     @staticmethod
-    def parse_word(file_path: str) -> List[Dict]:
+    def parse_word(file_path: str, use_ai_fallback: bool = True) -> List[Dict]:
         """Parse Word file (.docx) containing tables to products"""
         try:
             from docx import Document
@@ -340,8 +340,18 @@ class FileParser:
                     print(f"  ⚠️ Skipping table {table_idx + 1}: {str(e)[:50]}")
                     continue
             
+            # If no tables found or empty, try AI extraction
+            if not all_products and use_ai_fallback:
+                print("  ℹ️  No tables found, trying AI extraction...")
+                try:
+                    from utils.ai_extractor import AIProductExtractor
+                    all_products = AIProductExtractor.extract_from_file(file_path)
+                    print(f"  ✅ AI extracted {len(all_products)} products")
+                except Exception as e:
+                    print(f"  ⚠️  AI extraction failed: {str(e)[:100]}")
+            
             if not all_products:
-                raise ValueError("No valid tables found in Word document")
+                raise ValueError("No products found in Word document (tried both table and AI extraction)")
             
             return all_products
         
@@ -351,7 +361,7 @@ class FileParser:
             raise ValueError(f"Error parsing Word: {str(e)}")
     
     @staticmethod
-    def parse_pdf(file_path: str) -> List[Dict]:
+    def parse_pdf(file_path: str, use_ai_fallback: bool = True) -> List[Dict]:
         """Parse PDF file containing tables to products"""
         try:
             import pdfplumber
@@ -389,8 +399,18 @@ class FileParser:
                         print(f"  ⚠️ Error on page {page_num}: {str(e)[:50]}")
                         continue
             
+            # If no tables found or empty, try AI extraction
+            if not all_products and use_ai_fallback:
+                print("  ℹ️  No tables found, trying AI extraction...")
+                try:
+                    from utils.ai_extractor import AIProductExtractor
+                    all_products = AIProductExtractor.extract_from_file(file_path)
+                    print(f"  ✅ AI extracted {len(all_products)} products")
+                except Exception as e:
+                    print(f"  ⚠️  AI extraction failed: {str(e)[:100]}")
+            
             if not all_products:
-                raise ValueError("No valid tables found in PDF")
+                raise ValueError("No products found in PDF (tried both table and AI extraction)")
             
             return all_products
         

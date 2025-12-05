@@ -59,15 +59,15 @@ def run_crawl_background(task_id: str, user_id: str, url: str, website_name: str
         # Import pipeline
         from pipeline import main as pipeline_main
         
-        # Prepare argv for pipeline (truyền user_id và website_name)
+        # Prepare argv for pipeline
+        # Format: python3 pipeline.py <url> <user_id> [max_products] [website_name]
         original_argv = sys.argv.copy()
         sys.argv = [
             sys.argv[0],
             url,
+            user_id,
             str(max_products),
-            "gemini",  # ai_provider
-            user_id,  # NEW: user_id
-            website_name or url  # NEW: website_name
+            website_name or ""
         ]
         
         try:

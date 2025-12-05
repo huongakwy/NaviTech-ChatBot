@@ -2,6 +2,8 @@ from typing import Optional
 import uuid
 import csv
 import io
+from io import BytesIO
+import pandas as pd
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session 
 
@@ -13,12 +15,26 @@ class ProductRepository:
     @staticmethod
     def _parse_float(value: str) -> Optional[float]:
         """Safely parse a string to float, returning None if invalid"""
-        if not value or not value.strip():
+        if value is None:
             return None
+        # Convert to string safely, then strip
         try:
-            return float(value.strip())
+            s = str(value).strip()
+        except Exception:
+            return None
+        if not s:
+            return None
+        # Replace common thousand separators if present
+        s = s.replace(",", "")
+        try:
+            return float(s)
         except (ValueError, TypeError):
             return None
+
+    @staticmethod
+    def _safe_str(value) -> str:
+        """Convert value to stripped string safely."""
+        return str(value).strip() if value is not None else ""
     
     @staticmethod
     def create(payload: ProductCreate) -> ProductModel:
@@ -88,9 +104,41 @@ class ProductRepository:
             
 
     @staticmethod
-    def add_file_to_products(file: bytes, user_id: uuid.UUID, website_name: str) -> dict:
+    def _parse_rows_from_file(file: bytes, file_name: str | None) -> list[dict]:
         """
-        Parse CSV file and create products in database.
+        Parse incoming file bytes into list of row dicts.
+        Supports CSV and Excel (.xlsx/.xls). If CSV decode fails, falls back to Excel.
+        """
+        # Try Excel first if indicated by extension
+        if file_name and file_name.lower().endswith((".xlsx", ".xls")):
+            try:
+                df = pd.read_excel(BytesIO(file))
+                return df.to_dict(orient="records")
+            except Exception:
+                pass
+
+        # Try CSV with multiple encodings
+        for enc in ["utf-8-sig", "utf-8", "latin-1", "cp1252"]:
+            try:
+                text = file.decode(enc)
+                reader = csv.DictReader(io.StringIO(text))
+                return list(reader)
+            except UnicodeDecodeError:
+                continue
+
+        # Fallback: try Excel even if extension unknown
+        try:
+            df = pd.read_excel(BytesIO(file))
+            return df.to_dict(orient="records")
+        except Exception as e:
+            raise ValueError(f"Error parsing file: {str(e)}")
+
+    @staticmethod
+    def add_file_to_products(
+        file: bytes, user_id: uuid.UUID, website_name: str, file_name: str | None = None
+    ) -> dict:
+        """
+        Parse CSV/Excel file and create products in database.
         Returns a dict with:
         - 'added_products': list of successfully added products
         - 'missing_info_products': list of products with missing required information
@@ -98,22 +146,21 @@ class ProductRepository:
         added_products = []
         missing_info_products = []
         
-        # Parse CSV file from bytes
+        # Parse file to rows
         try:
-            file_content = file.decode('utf-8')
-            csv_reader = csv.DictReader(io.StringIO(file_content))
+            rows = ProductRepository._parse_rows_from_file(file, file_name)
         except Exception as e:
-            raise ValueError(f"Error parsing CSV file: {str(e)}")
+            raise ValueError(f"Error parsing file: {str(e)}")
         
         # Required fields to check for missing information
         required_fields = ['title', 'price', 'original_price', 'currency', 'brand', 'description', 'availability']
         
-        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 because row 1 is header
+        for row_num, row in enumerate(rows, start=2):  # Start at 2 because row 1 is header
             try:
                 # Extract data from CSV row
                 # Map CSV columns to ProductCreate fields
                 # Handle website_id parsing
-                website_id_value = row.get('website_id', '').strip() if row.get('website_id') else ''
+                website_id_value = ProductRepository._safe_str(row.get('website_id', ''))
                 try:
                     website_id = int(website_id_value) if website_id_value else 0
                 except (ValueError, TypeError):
@@ -122,17 +169,17 @@ class ProductRepository:
                 product_data = {
                     'website_name': website_name,
                     'website_id': website_id,
-                    'url': row.get('url', '').strip() if row.get('url') else '',
-                    'title': row.get('title', '').strip() if row.get('title') else None,
+                    'url': ProductRepository._safe_str(row.get('url', '')),
+                    'title': ProductRepository._safe_str(row.get('title', '')) or None,
                     'price': ProductRepository._parse_float(row.get('price', '')),
                     'original_price': ProductRepository._parse_float(row.get('original_price', '')),
-                    'currency': row.get('currency', '').strip() if row.get('currency') else None,
-                    'sku': row.get('sku', '').strip() if row.get('sku') else None,
-                    'brand': row.get('brand', '').strip() if row.get('brand') else None,
-                    'category': row.get('category', '').strip() if row.get('category') else None,
-                    'description': row.get('description', '').strip() if row.get('description') else None,
-                    'availability': row.get('availability', '').strip() if row.get('availability') else None,
-                    'images': [img.strip() for img in row.get('images', '').split(',')] if row.get('images') and row.get('images').strip() else None,
+                    'currency': ProductRepository._safe_str(row.get('currency', '')) or None,
+                    'sku': ProductRepository._safe_str(row.get('sku', '')) or None,
+                    'brand': ProductRepository._safe_str(row.get('brand', '')) or None,
+                    'category': ProductRepository._safe_str(row.get('category', '')) or None,
+                    'description': ProductRepository._safe_str(row.get('description', '')) or None,
+                    'availability': ProductRepository._safe_str(row.get('availability', '')) or None,
+                    'images': [img.strip() for img in ProductRepository._safe_str(row.get('images', '')).split(',')] if row.get('images') else None,
                     'user_id': user_id,
                 }
                 
