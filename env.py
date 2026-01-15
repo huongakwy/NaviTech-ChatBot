@@ -23,11 +23,8 @@ class Env(BaseModel):
     FASTAPI_PORT: int
     DATABASE_URL: str
     QDRANT_PORT: int
-    GEMINI_API_KEY: str
     OPENAI_API_KEY: str
-    GEMINI_API_KEY1: str
-    GEMINI_API_KEY2: str
+    OPENAI_API_MODEL: str
     LEN_EMBEDDING: int
-    CLAUDE_API_KEY: Optional[str] = None  # Optional - không bắt buộc
     
 env = Env.model_validate(dict(os.environ))

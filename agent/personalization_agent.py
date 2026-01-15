@@ -17,9 +17,9 @@ import json
 router = APIRouter(prefix="/chatbot", tags=["Personalization Agent"])
 
 llm_config = {
-    "model": "gemini-2.5-flash",
-    "api_key": env.GEMINI_API_KEY,
-    "api_type": "google"
+    "model":  env.OPENAI_API_MODEL,
+    "api_key": env.OPENAI_API_KEY,
+    "api_type": "openai"
 }
 
 class PersonalizationAgent:

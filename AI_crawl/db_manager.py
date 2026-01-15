@@ -15,7 +15,7 @@ import uuid as uuid_lib
 class DatabaseManager:
     # ⚙️ Configuration - Set cứng mặc định
     DB_HOST = '103.72.56.109'
-    DB_PORT = 5431
+    DB_PORT = env.POSTGRES_PORT
     DB_USER = 'postgres'
     DB_PASSWORD = 'mypassword'
     DB_NAME = 'chatbot'

@@ -18,18 +18,15 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 router = APIRouter( prefix="/sqlchatbot", tags=["sqlsearch"])
+
 llm_openai = {
-            "model": "gpt-4o-mini",
-            "api_key": env.OPENAI_API_KEY
-        }
-llm_google = {
-            "model": "gemini-2.5-flash",
-            "api_key": env.GEMINI_API_KEY,
-            "api_type": "google"
-        }
+    "model": env.OPENAI_API_MODEL,
+    "api_key": env.OPENAI_API_KEY
+}
+
 class SQLAgent:
     def __init__(self):
-        self.llm_config = llm_google
+        self.llm_config = llm_openai
         self.db_schema = self._get_db_schema()
         self.agent = self._create_sql_agent()
     
@@ -156,7 +153,7 @@ class SQLAgent:
         try:
             connection = psycopg2.connect(
                 host="localhost",
-                port="5431",
+                port=env.POSTGRES_PORT,
                 database="chatbot",
                 user="postgres",
                 password="mypassword"

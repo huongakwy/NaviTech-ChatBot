@@ -2,26 +2,18 @@ from autogen import ConversableAgent
 from env import env
 from models.chat import ChatbotRequest
 from fastapi import APIRouter
-llm_google = [
-    {
-        "model": "gemini-2.5-flash",
-        "api_key": env.GEMINI_API_KEY,
-        "api_type": "google"
-    }
-]
 
-llm_anthrophic = [
+llm_openai = [
     {
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": env.CLAUDE_API_KEY,
-        "api_type": "anthropic"
+        "model": env.OPENAI_API_MODEL,
+        "api_key": env.OPENAI_API_KEY,
     }
 ]
 
 
 class MySelfAgent:
     def __init__(self):
-        self.llm_config = llm_google
+        self.llm_config = llm_openai
         
     def _create_myself_agent(self) -> ConversableAgent:
         system_message = f"""
@@ -51,4 +43,8 @@ router = APIRouter(prefix="/chatbot", tags=["MySelf Agent"])
 async def myself_endpoint(request: ChatbotRequest):
     agent = MySelfAgent()
     response = await agent.process_query(request.message)
-    return response['content']
+    
+    # Handle both dict and string responses
+    if isinstance(response, dict):
+        return response.get('content', str(response))
+    return str(response)

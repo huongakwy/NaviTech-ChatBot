@@ -10,7 +10,7 @@ def query_postgres(query: str, params: tuple = None):
     try:
         connection = psycopg2.connect(
             host="localhost",
-            port="5431",
+            port=env.POSTGRES_PORT,
             database="chatbot",
             user="postgres",
             password="mypassword"

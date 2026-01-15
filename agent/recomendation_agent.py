@@ -13,36 +13,21 @@ from fastapi import APIRouter
 from tool_call.qdrant_search import QSearch
 from services.product import ProductService
 from embedding.search import product_semantic_search
-from google import genai
-
-client = genai.Client(api_key=env.GEMINI_API_KEY)
 
 class AgentResponse(BaseModel):
     response: str
 
 
 router = APIRouter( prefix="/chatbot", tags=["recomendation"])
-llm_openai = {
-            "model": "gpt-4o-mini",
-            "api_key": env.OPENAI_API_KEY
-        }
-llm_google = {
-            "model": "gemini-2.5-flash",
-            "api_key": env.GEMINI_API_KEY,
-            "api_type": "google"
-        }
 
-llm_anthrophic = [
-    {
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": env.CLAUDE_API_KEY,
-        "api_type": "anthropic"
-    }
-]
+llm_openai = {
+    "model": env.OPENAI_API_MODEL,
+    "api_key": env.OPENAI_API_KEY
+}
 
 class QdrantAgent:
     def __init__(self):
-        self.llm_config = llm_google
+        self.llm_config = llm_openai
         self.db_schema = self._get_db_schema()
         self.agent = self._create_qdrant_agent()
     def _get_db_schema(self) -> str:

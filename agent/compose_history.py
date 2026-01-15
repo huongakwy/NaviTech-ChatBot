@@ -7,21 +7,13 @@ from fastapi import APIRouter
 from models.message import MessageModel, CreateMessagePayload
 from services.message import MessageService
 
-llm_google = [
+llm_openai = [
     {
-        "model": "gemini-2.5-flash",
-        "api_key": env.GEMINI_API_KEY,
-        "api_type": "google"
+        "model": env.OPENAI_API_MODEL,
+        "api_key": env.OPENAI_API_KEY,
     }
 ]
 
-llm_anthrophic = [
-    {
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": env.CLAUDE_API_KEY,
-        "api_type": "anthropic"
-    }
-]
 router = APIRouter(prefix="/chatbot", tags=["Compose History Agent"])
 
         
@@ -39,7 +31,7 @@ def _create_compose_history_agent() -> ConversableAgent:
     return ConversableAgent(
         name="compose_history_expert",
         system_message=system_message,
-        llm_config={"config_list": llm_anthrophic},
+        llm_config={"config_list": llm_openai},
         human_input_mode="NEVER"
     )
         

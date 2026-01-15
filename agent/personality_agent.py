@@ -18,10 +18,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/personality", tags=["personality-styling"])
 
 # LLM Configuration
-llm_google = {
-    "model": "gemini-2.5-flash",
-    "api_key": env.GEMINI_API_KEY,
-    "api_type": "google"
+llm_openai = {
+    "model": env.OPENAI_API_MODEL,
+    "api_key": env.OPENAI_API_KEY,
 }
 
 
@@ -90,7 +89,7 @@ Viết lại toàn bộ nội dung với phong cách tử tế này.""",
     
     def __init__(self, company_name: str = "NAVITECH", agent_name: str = "trợ lý AI"):
         """Initialize PersonalityAgent with LLM and custom naming"""
-        self.llm_config = llm_google
+        self.llm_config = llm_openai
         self.company_name = company_name
         self.agent_name = agent_name
     

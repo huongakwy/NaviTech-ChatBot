@@ -17,14 +17,15 @@ from models.chat import ChatbotRequest
 from agent.product_agent import SQLAgent as ProductAgentSQLAgent
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
-# Cấu hình OAI_CONFIG_LIST cho autogen
-llm_anthrophic = [
+
+# LLM Configuration for autogen
+llm_openai = [
     {
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": env.CLAUDE_API_KEY,
-        "api_type": "anthropic"
+        "model": env.OPENAI_API_MODEL,
+        "api_key": env.OPENAI_API_KEY,
     }
 ]
+
 system_message_manager = """
 Bạn là một trợ lý AI thông minh làm việc cho Navitech
     Bạn sẽ nhận đầu vào câu hỏi của người dùng về một trang web bất kỳ sau đó phân tích và quyết định sử dụng trợ lý nào để trả lời câu hỏi của người dùng
@@ -44,7 +45,7 @@ Bạn là một trợ lý AI thông minh làm việc cho Navitech
 manager_chat = ConversableAgent(
     name="ManagerChat",
     system_message=system_message_manager,
-    llm_config={"config_list": llm_anthrophic},
+    llm_config={"config_list": llm_openai},
     human_input_mode= "NEVER",
 )
 

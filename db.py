@@ -4,7 +4,7 @@ from app_environment import AppEnvironment
 from env import env
 
 db = engine.create_engine(
-    f"postgresql://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@localhost:5431/{env.POSTGRES_DB}",
+    f"postgresql://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@localhost:{env.POSTGRES_PORT}/{env.POSTGRES_DB}",
     # echo=(AppEnvironment.is_production_env(env.APP_ENV) == False),
     pool_pre_ping=True,
     # pool_size=5,
@@ -13,9 +13,10 @@ db = engine.create_engine(
     pool_recycle=1800,
 )
 
-vectordb_conn_str = f"postgresql+psycopg://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@localhost:5431/{env.POSTGRES_DB}"
+vectordb_conn_str = f"postgresql+psycopg://{env.POSTGRES_USER}:{env.POSTGRES_PASSWORD}@localhost:{env.POSTGRES_PORT}/{env.POSTGRES_DB}"
 
 Session = sessionmaker(db)
+SessionLocal = Session  # Alias for compatibility
 
 
 def get_db() -> SQLSession:

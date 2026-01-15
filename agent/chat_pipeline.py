@@ -23,12 +23,11 @@ import uuid
 
 router = APIRouter(prefix="/chatbots", tags=["Pipeline All Agent"])
 
-# Manager Agent để routing
-llm_anthrophic = [
+# Manager Agent configuration
+llm_openai = [
     {
-        "model": "claude-3-5-sonnet-20241022",
-        "api_key": env.CLAUDE_API_KEY,
-        "api_type": "anthropic"
+        "model": env.OPENAI_API_MODEL,
+        "api_key": env.OPENAI_API_KEY,
     }
 ]
 
@@ -67,7 +66,7 @@ PHÂN LOẠI AGENT:
 manager_agent = ConversableAgent(
     name="ManagerChat",
     system_message=system_message_manager,
-    llm_config={"config_list": llm_anthrophic},
+    llm_config={"config_list": llm_openai},
     human_input_mode="NEVER",
 )
 
@@ -177,7 +176,13 @@ Hãy phân tích và quyết định agent phù hợp.
         print(f"🎯 Manager decision: {manager_response}")
         
         # [5] Extract routing decision
-        routing_info = extract_json_query(manager_response['content'])
+        # Handle both dict (autogen) and string (direct response) formats
+        if isinstance(manager_response, dict):
+            response_content = manager_response.get('content', str(manager_response))
+        else:
+            response_content = str(manager_response)
+        
+        routing_info = extract_json_query(response_content)
         agent_name = routing_info.get('agent', 'MySelf')
         agent_query = routing_info.get('query', query)
         

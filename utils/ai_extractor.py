@@ -30,27 +30,27 @@ class AIProductExtractor:
     }
     
     @staticmethod
-    def extract_from_text(text_content: str, gemini_api_key: str = None) -> List[Dict]:
+    def extract_from_text(text_content: str, openai_api_key: str = None) -> List[Dict]:
         """
-        Extract product data from unstructured text using Gemini AI
+        Extract product data from unstructured text using OpenAI
         
         Args:
             text_content: Raw text content
-            gemini_api_key: Gemini API key (optional, will use from env)
+            openai_api_key: OpenAI API key (optional, will use from env)
         
         Returns:
             List of product dictionaries matching database schema
         """
         try:
-            import google.generativeai as genai
+            from openai import OpenAI
             
             # Get API key
-            api_key = gemini_api_key or os.getenv('GEMINI_API_KEY')
+            api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
             if not api_key:
-                raise ValueError("GEMINI_API_KEY not found in environment")
+                raise ValueError("OPENAI_API_KEY not found in environment")
             
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            client = OpenAI(api_key=api_key)
+            model = os.getenv('OPENAI_API_MODEL', 'gpt-4o-mini')
             
             # Create prompt with schema
             prompt = f"""
@@ -72,9 +72,17 @@ You are a data extraction AI. Extract product information from the following tex
 Return ONLY the JSON array, nothing else:
 """
             
-            # Call Gemini API
-            response = model.generate_content(prompt)
-            response_text = response.text.strip()
+            # Call OpenAI API
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a data extraction AI. Return only valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1
+            )
+            
+            response_text = response.choices[0].message.content.strip()
             
             # Clean response (remove markdown code blocks if present)
             if response_text.startswith('```'):
@@ -119,12 +127,12 @@ Return ONLY the JSON array, nothing else:
             return normalized_products
             
         except ImportError:
-            raise ValueError("google-generativeai not installed. Run: pip install google-generativeai")
+            raise ValueError("openai not installed. Run: pip install openai")
         except Exception as e:
             raise ValueError(f"AI extraction error: {str(e)}")
     
     @staticmethod
-    def extract_from_file(file_path: str, gemini_api_key: str = None) -> List[Dict]:
+    def extract_from_file(file_path: str, openai_api_key: str = None) -> List[Dict]:
         """
         Extract product data from file using AI
         
@@ -164,7 +172,7 @@ Return ONLY the JSON array, nothing else:
                 raise ValueError(f"Unsupported file type for AI extraction: {ext}")
             
             # Extract using AI
-            return AIProductExtractor.extract_from_text(content, gemini_api_key)
+            return AIProductExtractor.extract_from_text(content, openai_api_key)
             
         except Exception as e:
             raise ValueError(f"File extraction error: {str(e)}")

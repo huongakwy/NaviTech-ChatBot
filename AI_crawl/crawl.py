@@ -55,13 +55,11 @@ class AIAgent:
     
     def _find_available_provider(self):
         """Tìm provider đầu tiên có API key"""
-        providers = ['openai', 'gemini', 'grok']
+        providers = ['openai']
         for p in providers:
             if p == 'openai':
                 key = os.getenv('OPENAI_API_KEY')
-            elif p == 'gemini':
-                key = os.getenv('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY1') or os.getenv('GOOGLE_API_KEY')
-            else:  # grok
+            else:  # grok (backup)
                 key = os.getenv('XAI_API_KEY')
             
             if key:
@@ -73,27 +71,9 @@ class AIAgent:
         """Lấy API key từ environment"""
         if self.provider == 'openai':
             return os.getenv('OPENAI_API_KEY')
-        elif self.provider == 'gemini':
-            return os.getenv('GEMINI_API_KEY') or os.getenv('GEMINI_API_KEY1') or os.getenv('GOOGLE_API_KEY')
         elif self.provider == 'grok':
             return os.getenv('XAI_API_KEY')
         return None
-    
-    def _get_gemini_keys(self):
-        """Lấy danh sách các Gemini API keys để retry"""
-        keys = []
-        key1 = os.getenv('GEMINI_API_KEY')
-        key2 = os.getenv('GEMINI_API_KEY1')
-        key3 = os.getenv('GOOGLE_API_KEY')
-        
-        if key1:
-            keys.append(key1)
-        if key2 and key2 != key1:  # Avoid duplicate
-            keys.append(key2)
-        if key3 and key3 not in [key1, key2]:  # Avoid duplicate
-            keys.append(key3)
-        
-        return keys
     
     def identify_product_sitemaps(self, sitemap_urls: List[str]) -> List[str]:
         """
@@ -115,8 +95,6 @@ class AIAgent:
         try:
             if self.provider == 'openai':
                 return self._openai_identify(sitemap_urls)
-            elif self.provider == 'gemini':
-                return self._gemini_identify(sitemap_urls)
             elif self.provider == 'grok':
                 return self._grok_identify(sitemap_urls)
         except Exception as e:
@@ -190,72 +168,6 @@ TRẢ VỀ JSON array với format:
         result = json.loads(response.choices[0].message.content)
         print(f"   AI reasoning: {result.get('reasoning', '')}")
         return result.get('product_sitemaps', [])
-    
-    def _gemini_identify(self, sitemap_urls: List[str]) -> List[str]:
-        """Dùng Google Gemini API với retry bằng 2 keys"""
-        import google.generativeai as genai
-        
-        gemini_keys = self._get_gemini_keys()
-        
-        prompt = f"""You are an e-commerce sitemap analyzer.
-
-Here are sitemap URLs from a website:
-
-{json.dumps(sitemap_urls, indent=2)}
-
-ANALYZE and RETURN only the sitemap URLs that likely contain PRODUCT PAGES.
-
-Sitemaps that usually DON'T contain products:
-- news, blog, pages, landings, collections (collection listing)
-- category, tags
-
-Sitemaps that usually contain products:
-- product, item, goods, catalog
-- collection_products (products in collection)
-
-RETURN JSON format:
-{{
-  "product_sitemaps": ["url1", "url2", ...],
-  "reasoning": "brief explanation"
-}}"""
-        
-        last_error = None
-        for key_idx, api_key in enumerate(gemini_keys, 1):
-            try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-2.5-pro')
-                
-                response = model.generate_content(
-                    prompt,
-                    generation_config=genai.GenerationConfig(
-                        response_mime_type="application/json",
-                        temperature=0
-                    )
-                )
-                
-                result = json.loads(response.text)
-                print(f"   AI reasoning: {result.get('reasoning', '')}")
-                return result.get('product_sitemaps', [])
-                
-            except Exception as e:
-                last_error = e
-                error_msg = str(e)
-                
-                # Check if it's a quota error
-                if '429' in error_msg or 'quota' in error_msg.lower():
-                    print(f"⚠️  AI error (key {key_idx}): {error_msg}")
-                    if key_idx < len(gemini_keys):
-                        print(f"   → Thử key #{key_idx + 1}...")
-                    else:
-                        print(f"   → Hết các keys, dùng heuristic fallback")
-                else:
-                    # Lỗi không phải quota
-                    print(f"❌ Gemini API error (key {key_idx}): {error_msg}")
-                    raise
-        
-        # Nếu hết tất cả keys, trả về empty list (sẽ dùng heuristic)
-        print(f"⚠️  Tất cả Gemini keys đã hết quota. Dùng heuristic fallback.")
-        return []
     
     def _grok_identify(self, sitemap_urls: List[str]) -> List[str]:
         """Dùng xAI Grok API"""
@@ -353,42 +265,6 @@ Trả về CHỈ JSON, không giải thích."""
                     'price': float(result.get('current_price', 0))
                 }
             
-            elif self.provider == 'gemini':
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                
-                prompt = f"""Phân tích HTML này và trích xuất giá sản phẩm:
-
-HTML: {price_html}
-
-Tìm kiếm:
-1. Giá gốc (từ <del>, strikethrough, giá cũ)
-2. Giá hiện tại (từ <ins>, giá mới, giá active)
-
-Trả về JSON (chỉ số, không ký tự tiền tệ):
-{{
-  "original_price": 0,
-  "current_price": 0
-}}
-
-Trả về CHỈ JSON, không giải thích."""
-                
-                model = genai.GenerativeModel('gemini-2.5-pro')
-                response = model.generate_content(prompt)
-                
-                content = response.text
-                # Parse JSON từ markdown code block hoặc raw JSON
-                if '```' in content:
-                    # Extract JSON từ ```json ... ```
-                    json_match = content.split('```json')[-1].split('```')[0].strip()
-                else:
-                    json_match = content.strip()
-                
-                result = json.loads(json_match)
-                return {
-                    'original_price': float(result.get('original_price', 0)),
-                    'price': float(result.get('current_price', 0))
-                }
         except Exception as e:
             # Debug: log error
             import traceback
@@ -1626,16 +1502,15 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) < 2:
-        print("Cách dùng: python3 crawl.py <URL> [số_sản_phẩm] [--ai=openai|gemini|grok]")
+        print("Cách dùng: python3 crawl.py <URL> [số_sản_phẩm] [--ai=openai|grok]")
         print("           python3 crawl.py <URL> --inspect  (xem cấu trúc sitemap)")
         print("\nVí dụ:")
         print("  python3 crawl.py https://phongvu.vn")
-        print("  python3 crawl.py https://phongvu.vn --ai=gemini")
         print("  python3 crawl.py https://phongvu.vn 50 --ai=openai")
         print("  python3 crawl.py https://phongvu.vn --inspect")
         print("\nAI Providers:")
         print("  openai  → Cần OPENAI_API_KEY")
-        print("  gemini  → Cần GEMINI_API_KEY hoặc GOOGLE_API_KEY")
+        print("  grok    → Cần XAI_API_KEY")
         print("  grok    → Cần XAI_API_KEY")
         print("\nNếu không có API key, sẽ dùng heuristic fallback")
         sys.exit(1)
