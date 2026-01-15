@@ -22,6 +22,7 @@ class Env(BaseModel):
     DEBUG: bool
     FASTAPI_PORT: int
     DATABASE_URL: str
+    QDRANT_HOST: str
     QDRANT_PORT: int
     OPENAI_API_KEY: str
     OPENAI_API_MODEL: str

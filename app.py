@@ -13,7 +13,8 @@ from controllers import (
     product,
     pipeline_endpoint,
     file_upload,
-    personality
+    personality,
+    faq
 )
 
 from agent import (
@@ -59,6 +60,7 @@ app.include_router(product.router, prefix="/api")
 app.include_router(pipeline_endpoint.router, prefix="/api")
 app.include_router(file_upload.router, prefix="/api")
 app.include_router(personality.router)
+app.include_router(faq.router)  # FAQ endpoints
 
 class StaticFileMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

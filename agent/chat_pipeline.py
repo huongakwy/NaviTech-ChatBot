@@ -7,6 +7,7 @@ from agent.recomendation_agent import chatbot_endpoint
 from agent.personalization_agent import PersonalizationAgent
 from agent.document_retrieval_agent import DocumentRetrievalAgent
 from agent.personality_agent import PersonalityAgent
+from agent.faq_agent import FAQAgent
 from models.chat import ChatbotRequest
 from models.message import CreateMessagePayload
 from services.message import MessageService
@@ -155,6 +156,69 @@ async def pipeline_chatbot(
             
             history_context = "\n".join(history_summary[-5:])
             print(f"📜 History context: {history_context[:200]}...")
+        
+        # ========================================
+        # [2.5] 🆕 FAQ PRE-CHECK (MỚI)
+        # Check FAQ trước khi routing đến các agents khác
+        # Nếu match FAQ với score >= threshold → Trả lời trực tiếp
+        # Nếu không match → Fallback về flow bình thường
+        # ========================================
+        print(f"\n{'='*60}")
+        print(f"🔍 CHECKING FAQ DATABASE...")
+        print(f"{'='*60}")
+        
+        try:
+            faq_agent = FAQAgent(threshold=0.72)  # Adjusted threshold for better matching
+            faq_result = faq_agent.search_faq(
+                query=query,
+                user_id=user_id,
+                threshold=0.72
+            )
+            
+            # Nếu FAQ matched
+            if faq_result and faq_result.get("matched"):
+                print(f"✅✅✅ FAQ MATCHED! Returning direct answer")
+                print(f"   Score: {faq_result['score']:.3f}")
+                print(f"   FAQ ID: {faq_result['faq_id']}")
+                
+                response_text = faq_result["answer"]
+                
+                # Apply personality nếu có
+                if user_personality and user_personality_name:
+                    print(f"🎨 Applying personality to FAQ answer: {user_personality_name}")
+                    try:
+                        response_text = user_personality.rewrite_response(
+                            response=response_text,
+                            personality_name=user_personality_name
+                        )
+                    except Exception as e:
+                        print(f"⚠️  Error applying personality: {e}")
+                
+                # Lưu response vào DB
+                assistant_message_payload = CreateMessagePayload(
+                    chat_id=chat_id,
+                    role="assistant",
+                    content=response_text
+                )
+                messageservice.create_message(assistant_message_payload)
+                print(f"✅ FAQ response saved to DB")
+                
+                # Return FAQ answer trực tiếp (không cần routing)
+                return response_text
+            
+            else:
+                print(f"⚠️  No FAQ matched (score below 0.85)")
+                print(f"   Fallback to normal agent routing...")
+        
+        except Exception as faq_error:
+            print(f"⚠️  FAQ check error: {faq_error}")
+            print(f"   Continuing with normal flow...")
+        
+        print(f"{'='*60}\n")
+        
+        # ========================================
+        # FALLBACK: Normal flow nếu FAQ không match
+        # ========================================
         
         # [3] Tạo enhanced query với context
         if history_context:

@@ -3,7 +3,7 @@ from qdrant_client import QdrantClient
 from embedding.generate_embeddings import query_embedding, generate_embedding
 from models.product import Product, ProductModel, ProductCreate
 
-qdrant = QdrantClient("http://localhost:6334")
+qdrant = QdrantClient(f"http://{env.QDRANT_HOST}:{env.QDRANT_PORT}")
 class QSearch:
     @staticmethod
     def search( payload, collection_name = "product_name_embeddings", limit=5):
