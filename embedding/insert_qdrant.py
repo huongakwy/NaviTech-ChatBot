@@ -34,7 +34,7 @@ def insert_products_to_qdrant(embedding: list,  payload: dict, USER_ID: str):
             }
         )
         qdrant.upsert(collection_name=USER_ID, points=[point])
-        print(f"✅ Đã chèn dữ liệu vào collection '{payload.get("id")}'.")
+        print(f"✅ Đã chèn dữ liệu vào collection '{payload.get('id')}'.")
 
 
 def ensure_product_collection_exists(COLLECTION_NAME: str = "products"):
@@ -66,4 +66,4 @@ def insert_products_to_qdrant_product(embedding: list,  payload: dict, USER_ID: 
             }
         )
         qdrant.upsert(collection_name=COLLECTION_NAME, points=[point])
-        print(f"✅ Đã chèn dữ liệu vào collection '{payload.get("id")}'.")
+        print(f"✅ Đã chèn dữ liệu vào collection '{payload.get('id')}'.")

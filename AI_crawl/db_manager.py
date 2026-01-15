@@ -12,9 +12,13 @@ from datetime import datetime
 import zlib
 import uuid as uuid_lib
 
+# Add parent directory to path to import env
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from env import env
+
 class DatabaseManager:
     # ⚙️ Configuration - Set cứng mặc định
-    DB_HOST = '103.72.56.109'
+    DB_HOST = 'localhost'
     DB_PORT = env.POSTGRES_PORT
     DB_USER = 'postgres'
     DB_PASSWORD = 'mypassword'
@@ -113,7 +117,7 @@ class DatabaseManager:
                         'category': "VARCHAR(255)",
                         'description': 'TEXT',
                         'availability': "VARCHAR(100)",
-                        'images': 'TEXT',
+                        'images': 'TEXT[]',
                         'user_id': 'UUID',
                         'created_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
                         'updated_at': 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
@@ -364,6 +368,11 @@ class DatabaseManager:
                 images = product.get('images', [])
                 if not isinstance(images, list):
                     images = []
+                # Convert to PostgreSQL array format if not empty
+                if images:
+                    images = images  # psycopg2 handles list to array conversion automatically
+                else:
+                    images = None
                 
                 # Clean price - nếu price > 1e15 hoặc không hợp lệ, set to 0
                 price = product.get('price') or 0
@@ -462,7 +471,7 @@ class DatabaseManager:
                         SELECT
                             COUNT(*) as total_products,
                             COUNT(CASE WHEN price > 0 THEN 1 END) as products_with_price,
-                            COUNT(CASE WHEN images IS NOT NULL AND images != '' THEN 1 END) as products_with_images,
+                            COUNT(CASE WHEN images IS NOT NULL AND array_length(images, 1) > 0 THEN 1 END) as products_with_images,
                             COUNT(CASE WHEN sku IS NOT NULL AND sku != '' THEN 1 END) as products_with_sku,
                             AVG(price) as avg_price,
                             MIN(price) as min_price,
@@ -493,7 +502,7 @@ class DatabaseManager:
                             website_name,
                             COUNT(*) as total_products,
                             COUNT(CASE WHEN price > 0 THEN 1 END) as products_with_price,
-                            COUNT(CASE WHEN images IS NOT NULL AND images != '' THEN 1 END) as products_with_images,
+                            COUNT(CASE WHEN images IS NOT NULL AND array_length(images, 1) > 0 THEN 1 END) as products_with_images,
                             COUNT(CASE WHEN sku IS NOT NULL AND sku != '' THEN 1 END) as products_with_sku,
                             AVG(price) as avg_price,
                             MIN(price) as min_price,

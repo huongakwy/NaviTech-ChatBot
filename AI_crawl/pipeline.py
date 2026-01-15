@@ -214,7 +214,7 @@ def main():
         
         # Database config (hardcoded - same as DatabaseManager)
         DB_HOST = 'localhost'
-        DB_PORT = 5431
+        DB_PORT = 5432
         DB_USER = 'postgres'
         DB_PASSWORD = 'mypassword'
         DB_NAME = 'chatbot'

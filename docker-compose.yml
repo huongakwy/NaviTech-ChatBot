@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database - Shared by both chatbot and AI_crawl
   db:
     image: postgres:15
     container_name: postgres-container
@@ -9,6 +10,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -19,7 +21,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
+  # Qdrant Vector Database - For chatbot embeddings
   chatbot-qdrant:
     image: qdrant/qdrant:v1.15.1
     container_name: chatbot-qdrant-container
@@ -28,7 +33,47 @@ services:
       - "${QDRANT_PORT}:6333"
     volumes:
       - qdrant-data:/qdrant/storage
+    networks:
+      - app-network
+
+  # Chatbot FastAPI Application
+  chatbot-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatbot-app-container
+    restart: always
+    environment:
+      - APP_ENV=${APP_ENV}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - FASTAPI_PORT=${FASTAPI_PORT}
+      - DEBUG=${DEBUG}
+      - QDRANT_HOST=chatbot-qdrant
+      - QDRANT_PORT=6333
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_MODEL=${OPENAI_API_MODEL}
+      - LEN_EMBEDDING=${LEN_EMBEDDING}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_PORT=5432
+    ports:
+      - "${FASTAPI_PORT}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      chatbot-qdrant:
+        condition: service_started
+    networks:
+      - app-network
+    volumes:
+      - ./uploads:/uploads
+      - ./alembic:/alembic
 
 volumes:
   postgres-data:
   qdrant-data:
+
+networks:
+  app-network:
+    driver: bridge
